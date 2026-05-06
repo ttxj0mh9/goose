@@ -17,3 +17,6 @@ require (
 	golang.org/x/sync v0.6.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 )
+
+// Personal fork of pressly/goose for learning and experimentation.
+// Upstream: https://github.com/pressly/goose
