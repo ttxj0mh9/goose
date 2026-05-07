@@ -1,141 +1,88 @@
+// Package goose provides database migration tooling.
+// It is a fork of pressly/goose with additional features and improvements.
 package goose
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
-	"io/fs"
-	"strconv"
 )
 
-// Deprecated: VERSION will no longer be supported in the next major release.
-const VERSION = "v3.18.0"
+// DefaultTableName is the default name for the goose migrations table.
+const DefaultTableName = "goose_db_version"
 
-var (
-	minVersion      = int64(0)
-	maxVersion      = int64((1 << 63) - 1)
-	timestampFormat = "20060102150405"
-	verbose         = false
-	noColor         = false
-
-	// base fs to lookup migrations
-	baseFS fs.FS = osFS{}
-)
-
-// SetVerbose set the goose verbosity mode
-func SetVerbose(v bool) {
-	verbose = v
+// TableName returns the name of the migrations table.
+func TableName() string {
+	return tableName
 }
 
-// SetBaseFS sets a base FS to discover migrations. It can be used with 'embed' package.
-// Calling with 'nil' argument leads to default behaviour: discovering migrations from os filesystem.
-// Note that modifying operations like Create will use os filesystem anyway.
-func SetBaseFS(fsys fs.FS) {
-	if fsys == nil {
-		fsys = osFS{}
+// SetTableName sets a custom name for the goose migrations table.
+func SetTableName(name string) {
+	tableName = name
+}
+
+var tableName = DefaultTableName
+
+// Status prints the migration status for the current DB.
+func Status(db *sql.DB, dir string) error {
+	return status(db, dir)
+}
+
+// Up applies all available migrations.
+func Up(db *sql.DB, dir string) error {
+	return up(db, dir, 0)
+}
+
+// UpByOne migrates up by a single version.
+func UpByOne(db *sql.DB, dir string) error {
+	return upByOne(db, dir)
+}
+
+// UpTo migrates up to a specific version.
+func UpTo(db *sql.DB, dir string, version int64) error {
+	return up(db, dir, version)
+}
+
+// Down rolls back a single migration from the current version.
+func Down(db *sql.DB, dir string) error {
+	return down(db, dir)
+}
+
+// DownTo rolls back migrations to a specific version.
+func DownTo(db *sql.DB, dir string, version int64) error {
+	return downTo(db, dir, version)
+}
+
+// Redo re-runs the latest migration.
+func Redo(db *sql.DB, dir string) error {
+	return redo(db, dir)
+}
+
+// Reset rolls back all migrations.
+func Reset(db *sql.DB, dir string) error {
+	return reset(db, dir)
+}
+
+// Version prints the current version of the database.
+func Version(db *sql.DB, dir string) error {
+	current, err := GetDBVersion(db)
+	if err != nil {
+		return err
 	}
-
-	baseFS = fsys
-}
-
-// Run runs a goose command.
-//
-// Deprecated: Use RunContext.
-func Run(command string, db *sql.DB, dir string, args ...string) error {
-	ctx := context.Background()
-	return RunContext(ctx, command, db, dir, args...)
-}
-
-// RunContext runs a goose command.
-func RunContext(ctx context.Context, command string, db *sql.DB, dir string, args ...string) error {
-	return run(ctx, command, db, dir, args)
-}
-
-// RunWithOptions runs a goose command with options.
-//
-// Deprecated: Use RunWithOptionsContext.
-func RunWithOptions(command string, db *sql.DB, dir string, args []string, options ...OptionsFunc) error {
-	ctx := context.Background()
-	return RunWithOptionsContext(ctx, command, db, dir, args, options...)
-}
-
-// RunWithOptionsContext runs a goose command with options.
-func RunWithOptionsContext(ctx context.Context, command string, db *sql.DB, dir string, args []string, options ...OptionsFunc) error {
-	return run(ctx, command, db, dir, args, options...)
-}
-
-func run(ctx context.Context, command string, db *sql.DB, dir string, args []string, options ...OptionsFunc) error {
-	switch command {
-	case "up":
-		if err := UpContext(ctx, db, dir, options...); err != nil {
-			return err
-		}
-	case "up-by-one":
-		if err := UpByOneContext(ctx, db, dir, options...); err != nil {
-			return err
-		}
-	case "up-to":
-		if len(args) == 0 {
-			return fmt.Errorf("up-to must be of form: goose DRIVER DBSTRING [OPTIONS] up-to VERSION")
-		}
-
-		version, err := strconv.ParseInt(args[0], 10, 64)
-		if err != nil {
-			return fmt.Errorf("version must be a number (got '%s')", args[0])
-		}
-		if err := UpToContext(ctx, db, dir, version, options...); err != nil {
-			return err
-		}
-	case "create":
-		if len(args) == 0 {
-			return fmt.Errorf("create must be of form: goose DRIVER DBSTRING [OPTIONS] create NAME [go|sql]")
-		}
-
-		migrationType := "go"
-		if len(args) == 2 {
-			migrationType = args[1]
-		}
-		if err := Create(db, dir, args[0], migrationType); err != nil {
-			return err
-		}
-	case "down":
-		if err := DownContext(ctx, db, dir, options...); err != nil {
-			return err
-		}
-	case "down-to":
-		if len(args) == 0 {
-			return fmt.Errorf("down-to must be of form: goose DRIVER DBSTRING [OPTIONS] down-to VERSION")
-		}
-
-		version, err := strconv.ParseInt(args[0], 10, 64)
-		if err != nil {
-			return fmt.Errorf("version must be a number (got '%s')", args[0])
-		}
-		if err := DownToContext(ctx, db, dir, version, options...); err != nil {
-			return err
-		}
-	case "fix":
-		if err := Fix(dir); err != nil {
-			return err
-		}
-	case "redo":
-		if err := RedoContext(ctx, db, dir, options...); err != nil {
-			return err
-		}
-	case "reset":
-		if err := ResetContext(ctx, db, dir, options...); err != nil {
-			return err
-		}
-	case "status":
-		if err := StatusContext(ctx, db, dir, options...); err != nil {
-			return err
-		}
-	case "version":
-		if err := VersionContext(ctx, db, dir, options...); err != nil {
-			return err
-		}
-	default:
-		return fmt.Errorf("%q: no such command", command)
-	}
+	fmt.Printf("goose: version %d\n", current)
 	return nil
+}
+
+// GetDBVersion returns the current version of the database.
+func GetDBVersion(db *sql.DB) (int64, error) {
+	return getDBVersion(db)
+}
+
+// Create writes a new blank migration file.
+func Create(db *sql.DB, dir, name, migrationType string) error {
+	return create(db, dir, name, migrationType)
+}
+
+// Fix rewrites migration filenames to use the timestamp format.
+func Fix(dir string) error {
+	return fix(dir)
 }
