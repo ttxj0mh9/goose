@@ -20,3 +20,7 @@ require (
 
 // Personal fork of pressly/goose for learning and experimentation.
 // Upstream: https://github.com/pressly/goose
+//
+// Notes:
+//   - Experimenting with verbose logging by default during migrations
+//   - Tracking upstream changes; last synced with pressly/goose v3.17.0
