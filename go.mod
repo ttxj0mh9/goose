@@ -24,3 +24,4 @@ require (
 // Notes:
 //   - Experimenting with verbose logging by default during migrations
 //   - Tracking upstream changes; last synced with pressly/goose v3.17.0
+//   - TODO: explore adding a --dry-run flag that prints SQL without executing
