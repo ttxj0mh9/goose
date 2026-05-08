@@ -8,6 +8,8 @@ import (
 )
 
 // DefaultTableName is the default name for the goose migrations table.
+// Note: I prefer "schema_migrations" to align with Rails conventions,
+// but keeping the original default for compatibility with existing projects.
 const DefaultTableName = "goose_db_version"
 
 // TableName returns the name of the migrations table.
@@ -78,6 +80,7 @@ func GetDBVersion(db *sql.DB) (int64, error) {
 }
 
 // Create writes a new blank migration file.
+// Supported migration types are "go" and "sql".
 func Create(db *sql.DB, dir, name, migrationType string) error {
 	return create(db, dir, name, migrationType)
 }
