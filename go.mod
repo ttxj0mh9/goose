@@ -25,3 +25,5 @@ require (
 //   - Experimenting with verbose logging by default during migrations
 //   - Tracking upstream changes; last synced with pressly/goose v3.17.0
 //   - TODO: explore adding a --dry-run flag that prints SQL without executing
+//   - TODO: look into surfacing migration duration per-file in verbose output
+//   - Considering a wrapper CLI that reads DB config from a local .goose.yaml file
